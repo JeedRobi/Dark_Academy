@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registro de usuario</title>
+</head>
+<body>
+
+    <h2>Registrar usuario</h2>
+
+    <form method="post">
+        <label>Usuario:</label>
+        <input type="text" name="usuario" required><br><br>
+
+        <label>Contraseña:</label>
+        <input type="password" name="password" required><br><br>
+
+        <button type="submit">Registrar</button>
+    </form>
+
+    <br>
+    <a href="{{ url_for('login2') }}">Volver al login</a>
+
+    {% with mensajes = get_flashed_messages() %}
+        {% if mensajes %}
+            <p style="color:red;">{{ mensajes[0] }}</p>
+        {% endif %}
+    {% endwith %}
+
+</body>
+</html>
