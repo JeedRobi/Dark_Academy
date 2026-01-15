@@ -43,7 +43,7 @@ def login():
         else:
             flash("Usuario o contraseña incorrectos")
 
-    return render_template("login.html")
+    return render_template("login2x.html")
 
 
 # Ruta página principal
@@ -57,6 +57,20 @@ def inicio():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+# Ruta de registro
+@app.route("/registro", methods=["GET", "POST"])
+def registro():
+    if request.method == "POST":
+        usuario = request.form["usuario"]
+        password = request.form["password"]
+
+        # Aquí puedes agregar lógica para guardar el usuario en la BDA
+        # Por ahora solo redirigimos al login
+        flash("Registro exitoso. Por favor, inicia sesión.")
+        return redirect(url_for("login"))
+
+    return render_template("registro.html")
 
 ############################################
 #                 ALUMNOS                  #
@@ -262,9 +276,9 @@ def notas():
     return render_template("notas.html", notas=notas)
 
 # Crear nota
-@app.route('/nuevo_nota', methods=['GET', 'POST'])
+@app.route('/notas_nueva', methods=['GET', 'POST'])
 @login_required
-def nuevo_nota():
+def nueva_nota():
     if request.method == 'POST':
         expediente = request.form['expediente']
         codigo = request.form['codigo']
@@ -285,7 +299,7 @@ def nuevo_nota():
     return render_template("notas_nueva.html")
 
 # Editar nota: pasamos como parámetro el expediente y el codigo
-@app.route('/editar_nota/<expediente>/<codigo>', methods=['GET', 'POST'])
+@app.route('//<expediente>/<codigo>', methods=['GET', 'POST'])
 @login_required
 def editar_nota(expediente, codigo):
     conn = connect_to_mysql(config)
