@@ -13,7 +13,7 @@ template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'te
 app = Flask(__name__, template_folder=template_dir)
 app.secret_key = "Me_Gusta_Python" # Necesario para sesiones
 
-DB_NAME = "Dark_Academy_Natxo" # Aquí pon tu BDA
+DB_NAME = config.get('database') # Aquí pon tu BDA
 
 ############################################
 #          SEGURIDAD (MUY BÁSICA)          #
