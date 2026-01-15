@@ -39,7 +39,9 @@ def create_database(cur, db_name, cset, col):
     except mysql.connector.Error as err:
         print(f"Fallo al crear la BDA: {err}")
         exit(1)
-    else: return True
+    else: 
+        print(f'BDA {DB_NAME} creada')
+        return True
 
 def use_database(conn, cur, DB_NAME):
     '''Cambia a la BDA que se pasa como parámetro.
@@ -85,7 +87,7 @@ def insert_multiple(cur, tabla, valores):
         return True
 
 
-def obtener_tablas(conn, cur, bda):
+def obtener_tablas(cur, bda):
     '''Obtiene una lista de tuplas con los nombres de las tablas de la BDA
     Args:
         cur(mysql.connector.cursor.MySQLCursor):cursor
@@ -94,7 +96,7 @@ def obtener_tablas(conn, cur, bda):
         list[tuple] | None con información del error por consola
     '''
     try:
-        use_database(conn, cur, bda)
+        use_database(cur, bda)
         SQL = f'show tables'
         cur.execute(SQL)
         tablas = cur.fetchall() #obtenemos lista de nombres de tablas
@@ -200,19 +202,27 @@ def pasan_curso(cur):
 if __name__ == '__main__': 
 
     # 1. Conectar al servidor MySQL
-    pass
+    cfg_server = config.copy()
+    DB_NAME = cfg_server.pop('database', None) or config.get('database')
+
+    cnx = connect_to_mysql(cfg_server)
+    if cnx is None:
+        print("No se pudo conectar al servidor MySQL.")
+        exit(1)
 
 
     # 2 y 3. Crear la BDA y usarla
     # Si usais el servidor la BDA ya estará creada 
-    DB_NAME = "nombre_de_tu_BDA"
-    pass
+    cur = cnx.cursor()
 
     # Borrar la BDA por comodidad durante el testeo
     drop_database(cur, DB_NAME)
 
-    pass
-    print(f'BDA {DB_NAME} creada')
+    # Crear la BDA con especificaciones de caracteres en español
+    create_database(cur, DB_NAME, 'utf8mb4', 'utf8mb4_spanish_ci')
+    
+    # Usar la BDA
+    use_database(cnx, cur, DB_NAME)
 
     # 4. Crear las tablas de la BDA
     TABLES = {}
@@ -254,12 +264,18 @@ if __name__ == '__main__':
         usuario varchar(50) not null, -- usuario que hace la modificación
         cuando datetime not null, -- fecha y hora de la modificación
         operacion enum('insert', 'update', 'delete') not null -- operación DML utilizada
-    )'''
+    )'''    
 
     for table_name in TABLES:
-        pass
         print(f"Creando tabla {table_name}: ", end='')
-        pass
+        try:
+            cur.execute(TABLES[table_name])
+        except mysql.connector.Error as err:
+            print(f"ERROR -> {err}")
+            cnx.close()
+            exit(1)
+        else:
+            print("OK")
         
     # 5. Crear triggers auditoría notas
     TRIGGERS_AUDITORIA = {}
@@ -281,9 +297,23 @@ if __name__ == '__main__':
         values(null, old.expediente, old.codigo, old.nota, null,null,null, user(), now(), 'delete')'''
 
     for trigger in TRIGGERS_AUDITORIA:
-        pass
         print(f"Creando trigger {trigger}: ", end='')
-        pass
+        try:
+            # MySQL suele requerir "drop if exists" porque no admite IF NOT EXISTS en CREATE TRIGGER
+            # Intentar borrar el trigger previo (si no existe, lo ignoramos)
+            try:
+                cur.execute(f"DROP TRIGGER IF EXISTS {trigger}")
+            except mysql.connector.Error as err:
+                # 1360 -> "Trigger does not exist" (lo ignoramos)
+                if err.errno != 1360:
+                    raise
+            cur.execute(TRIGGERS_AUDITORIA[trigger])
+        except mysql.connector.Error as err:
+            print(f"ERROR -> {err}")
+            cnx.close()
+            exit(1)
+        else:
+            print("OK")
 
     # 6. Inserción de datos en las tablas
     valores_alumnos = [
@@ -293,9 +323,9 @@ if __name__ == '__main__':
         ('44444444', 'Juan Carlos', 'Wesnoth The Second'), 
         ('55555555', 'Federico', 'Muñoz Ferrer')
     ]
-    pass
-    print(f"registros en tabla alumnos insertados correctamente")
-    pass
+
+    if insert_multiple(cur, 'alumnos', valores_alumnos):
+        print("registros en tabla alumnos insertados correctamente")
 
     valores_modulos = [
         ('QP', 'Quirománcia Práctica'),
@@ -305,9 +335,8 @@ if __name__ == '__main__':
         ('OP', 'Orquestación de Plagas')
     ]
 
-    pass
-    print(f"registros en tabla modulos insertados correctamente")
-    pass
+    if insert_multiple(cur, 'modulos', valores_modulos):
+        print("registros en tabla modulos insertados correctamente")
 
     # NULL debe pasarse a None (equivalente Python)
     valores_notas = [
@@ -326,13 +355,24 @@ if __name__ == '__main__':
         ('55555555', 'OP', 4)
     ]
 
-    pass
-    print(f"registros en tabla notas insertados correctamente")
-    pass
+    if insert_multiple(cur, 'notas', valores_notas):
+        print("registros en tabla notas insertados correctamente")
+
+    # Confirmar inserciones
+    cnx.commit()
 
     # 7. Mostrar los datos de todas las tablas
-    pass
+    print("\n--- MOSTRANDO DATOS DE LA BDA ---")
+    cur.execute("show tables")
+    tablas = [t[0] for t in cur.fetchall()]
 
+    for t in tablas:
+        print(f"\nTabla: {t}")
+        cur.execute(f"select * from {t}")
+        print("Columnas:", cur.column_names)
+        filas = cur.fetchall()
+        for fila in filas:
+            print(fila)
 
     # 8. Función en el lado del servidor que comprueba si un expediente es correcto 
     SQL_FUNCION = '''
@@ -341,15 +381,40 @@ if __name__ == '__main__':
     NO SQL
         return (exp regexp '^[0-9]{8}$')
     '''
-    pass
+    try:
+        try:
+            cur.execute("drop function if exists expediente_correcto")
+        except mysql.connector.Error as err:
+            # 1305 -> "Function does not exist" (lo ignoramos)
+            if err.errno != 1305:
+                raise
+
+        cur.execute(SQL_FUNCION)
+        print("\nFunción expediente_correcto creada correctamente")
+    except mysql.connector.Error as err:
+        print(f"Error creando función: {err}")
+        cnx.close()
+        exit(1)
 
     # 9. Probando la función
     # NOTA: si los expedientes pasan de 8 caracteres da error. Es por la función en el lado del servidor.
     EXPEDIENTES = ['11112222', 'XXXYYYZZ']
 
-    pass
+    print("\n--- PRUEBA expediente_correcto ---")
+    for exp in EXPEDIENTES:
+        try:
+            cur.execute("select expediente_correcto(%s)", (exp,))
+            res = cur.fetchone()
+            print(f"{exp} -> {res[0]}")
+        except mysql.connector.Error as err:
+            print(f"Error probando expediente_correcto con {exp}: {err}")
 
     # 10. Función pasan_segundo
-    pass
+    print("\n--- PASAN A SEGUNDO ---")
+    info = pasan_curso(cur)
+    print("Expedientes que pasan:", info['pasan'])
+    print("Porcentaje:", info['porcentaje'])
+
     # cerrar todo
-    pass
+    cur.close()
+    cnx.close()
