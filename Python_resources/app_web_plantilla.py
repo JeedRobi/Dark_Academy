@@ -2,12 +2,15 @@ from flask import Flask, render_template, request, redirect, url_for
 from conectar_logger import connect_to_mysql
 from config import config # Aquí debes poner tu configuración de acceso a la BDA
 from DA_plantilla_alumnos import use_database
+import os
 
 # para la seguridad básica
 from flask import session, flash
 from functools import wraps
 
-app = Flask(__name__)
+# Ruta absoluta a los templates
+template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
+app = Flask(__name__, template_folder=template_dir)
 app.secret_key = "Me_Gusta_Python" # Necesario para sesiones
 
 DB_NAME = "Dark_Academy_Natxo" # Aquí pon tu BDA
