@@ -10,7 +10,7 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = "Me_Gusta_Python" # Necesario para sesiones
 
-DB_NAME = "Dark_Academy_Natxo" # Aquí pon tu BDA
+DB_NAME = config["database"] # Aquí pon tu BDA
 
 ############################################
 #          SEGURIDAD (MUY BÁSICA)          #
