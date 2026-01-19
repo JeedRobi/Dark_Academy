@@ -226,6 +226,11 @@ if __name__ == '__main__':
 
     # 4. Crear las tablas de la BDA
     TABLES = {}
+    TABLES['usuarios'] = '''
+    create table if not exists usuarios(
+        usuario varchar(50) PRIMARY KEY,
+        password varchar(255) NOT NULL
+    )'''
     TABLES['alumnos'] = '''
     create table if not exists alumnos(
         expediente char(8) PRIMARY KEY,

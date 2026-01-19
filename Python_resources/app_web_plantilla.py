@@ -7,6 +7,7 @@ import os
 # para la seguridad básica
 from flask import session, flash
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Ruta absoluta a los templates
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
@@ -16,7 +17,7 @@ app.secret_key = "Me_Gusta_Python" # Necesario para sesiones
 DB_NAME = config.get('database') # Aquí pon tu BDA
 
 ############################################
-#          SEGURIDAD (MUY BÁSICA)          #
+#          SEGURIDAD (Avanzado)          #
 ############################################
 
 # Decorador para proteger rutas
@@ -36,14 +37,28 @@ def login():
         usuario = request.form["usuario"]
         password = request.form["password"]
 
-        # EJEMPLO: usuario almacenado en el código.
-        if usuario == "admin" and password == "1234":
+        # Conectar a la BDA y verificar credenciales
+        conn = connect_to_mysql(config)
+        if conn is None:
+            flash("No se pudo conectar a la BDA")
+            return render_template("login2.html")
+        
+        cursor = conn.cursor()
+        use_database(conn, cursor, DB_NAME)
+
+        sql = "SELECT password FROM usuarios WHERE usuario = %s"
+        cursor.execute(sql, (usuario,))
+        resultado = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if resultado and check_password_hash(resultado[0], password):
             session["usuario"] = usuario
             return redirect(url_for("inicio"))
         else:
             flash("Usuario o contraseña incorrectos")
 
-    return render_template("login2x.html")
+    return render_template("login2.html")
 
 
 # Ruta página principal
@@ -65,10 +80,47 @@ def registro():
         usuario = request.form["usuario"]
         password = request.form["password"]
 
-        # Aquí puedes agregar lógica para guardar el usuario en la BDA
-        # Por ahora solo redirigimos al login
-        flash("Registro exitoso. Por favor, inicia sesión.")
-        return redirect(url_for("login"))
+        # Validar que los campos no estén vacíos
+        if not usuario or not password:
+            flash("Usuario y contraseña son requeridos")
+            return render_template("registro.html")
+
+        # Conectar a la BDA
+        conn = connect_to_mysql(config)
+        if conn is None:
+            flash("No se pudo conectar a la BDA")
+            return render_template("registro.html")
+        
+        cursor = conn.cursor()
+        use_database(conn, cursor, DB_NAME)
+
+        # Verificar si el usuario ya existe
+        sql_check = "SELECT usuario FROM usuarios WHERE usuario = %s"
+        cursor.execute(sql_check, (usuario,))
+        usuario_existente = cursor.fetchone()
+
+        if usuario_existente:
+            flash("El usuario ya existe. Por favor, elige otro nombre de usuario.")
+            cursor.close()
+            conn.close()
+            return render_template("registro.html")
+
+        # Si no existe, crear el nuevo usuario con contraseña hasheada
+        password_hash = generate_password_hash(password)
+        sql_insert = "INSERT INTO usuarios (usuario, password) VALUES (%s, %s)"
+        
+        try:
+            cursor.execute(sql_insert, (usuario, password_hash))
+            conn.commit()
+            flash("Registro exitoso. Por favor, inicia sesión.")
+            cursor.close()
+            conn.close()
+            return redirect(url_for("login"))
+        except Exception as e:
+            flash(f"Error al registrar el usuario: {str(e)}")
+            cursor.close()
+            conn.close()
+            return render_template("registro.html")
 
     return render_template("registro.html")
 

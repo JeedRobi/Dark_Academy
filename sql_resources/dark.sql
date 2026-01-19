@@ -6,6 +6,12 @@ collate utf8mb4_spanish_ci;
 
 use Dark_Academy;
 
+drop table if exists usuarios;
+create table usuarios(
+    usuario varchar(50) PRIMARY KEY,
+    password varchar(255) NOT NULL
+);
+
 drop table if exists alumnos;
 create table alumnos(
     expediente char(8) PRIMARY KEY,

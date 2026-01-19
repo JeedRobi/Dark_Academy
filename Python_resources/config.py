@@ -9,9 +9,9 @@ config = {
 '''
 
 config = {
-    'user': 'drake_jesus',
-    'password': 'gva2025',
-    'host': '172.30.19.225',
+    'user': 'root',
+    'password': '',
+    'host': '127.0.0.1',
     'database': 'DA_drake_jesus',
     'raise_on_warnings': True,
 }
