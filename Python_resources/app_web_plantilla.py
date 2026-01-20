@@ -245,7 +245,6 @@ def nuevo_modulo():
     if request.method == 'POST':
         codigo = request.form['codigo']
         nombre = request.form['nombre']
-        creditos = request.form['creditos']
 
         conn = connect_to_mysql(config)
         if conn is None:
@@ -253,8 +252,8 @@ def nuevo_modulo():
             return redirect(url_for('login'))
         cursor = conn.cursor()
         use_database(conn, cursor, DB_NAME)
-        sql = "INSERT INTO modulos (codigo, nombre, creditos) VALUES (%s, %s, %s)"
-        cursor.execute(sql, (codigo, nombre, creditos))
+        sql = "INSERT INTO modulos (codigo, nombre) VALUES (%s, %s)"
+        cursor.execute(sql, (codigo, nombre))
         conn.commit()
         cursor.close()
         conn.close()
@@ -274,10 +273,9 @@ def editar_modulo(codigo):
 
     if request.method == 'POST':
         nombre = request.form['nombre']
-        creditos = request.form['creditos']
 
-        sql = "UPDATE modulos SET nombre=%s, creditos=%s WHERE codigo=%s"
-        cursor.execute(sql, (nombre, creditos, codigo))
+        sql = "UPDATE modulos SET nombre=%s WHERE codigo=%s"
+        cursor.execute(sql, (nombre, codigo))
         conn.commit()
 
         cursor.close()
